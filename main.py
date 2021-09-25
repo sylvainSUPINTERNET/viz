@@ -24,6 +24,8 @@ profilesRepo = ProfileRepository(db=db, collectionName="bumbleProfiles");
 profiles_cursor = profilesRepo.find_all_and_extract_nodes();
 
 nodes_labels = proccess_label(profiles_cursor, labels=["age", "citiesInfo", "hobbies", "musics"])
+build_relation = nodes_labels[1]
+nodes_labels = nodes_labels[0]
 
 from neo4j import GraphDatabase
 neo_client = GraphDatabase.driver(f"{NEO_CLUSTER}", auth=(f"{NEO_USER}", f"{NEO_PASSWORD}"))
@@ -34,13 +36,26 @@ def create_node_tx(tx, label, value):
     result = tx.run("CREATE (n:"+label+" { value: "+value+" } ) RETURN n");
     print(result)
 
+def create_node_relation(tx, query):
+    result = tx.run(query)
+    print(result)
+
 with neo_client.session() as session:
     for k in nodes_labels:
         node_type = k
         for node_value in nodes_labels[k]:
+            node_value = "'"+ node_value + "'"
             print(f"type : {k} <=> {node_value}")
             print(k)
             res = session.write_transaction(create_node_tx, label=k, value=node_value)
+            print(res)
+    for relation_query in build_relation:
+        print(relation_query)
+        res = session.write_transaction(create_node_relation,query=relation_query)
+
+
+
+# MATCH (a:age), (b:music) WHERE a.value = '<AGE>' AND b.value = 'PROFILE_MUSICIAN' CREATE (a)-[r:LISTEN]->(b) RETURN type(r);
 
 # def create_node_tx(tx, name, profiles_cursor):
 #     #result = tx.run("CREATE (n:NodeExample { name: $name }) RETURN id(n) AS node_id", name=name)
